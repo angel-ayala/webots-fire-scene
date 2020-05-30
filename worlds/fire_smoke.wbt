@@ -1,0 +1,114 @@
+#VRML_SIM R2020a utf8
+WorldInfo {
+  basicTimeStep 8
+  defaultDamping Damping {
+    linear 0.5
+    angular 0.5
+  }
+}
+Viewpoint {
+  orientation -0.0964717241334419 0.9880487081633754 -0.12022045058726914 0.39579717734745395
+  position 3.485952431718581 1.343331926993168 3.330674426523601
+  near 0.2
+  followSmoothness 0.2
+}
+TexturedBackground {
+  texture "noon_park_empty"
+}
+TexturedBackgroundLight {
+  texture "noon_park_empty"
+}
+Forest {
+  translation 10 0 -0.75
+  shape [
+    -20 -10
+    0 -10
+    0 0
+    -20 0
+  ]
+  density 0.3
+  randomSeed 2
+}
+StraightRoadSegment {
+  translation 10 0 5
+  rotation 0 1 0 -1.5707996938995747
+  roadBorderHeight 0.05
+  length 20
+}
+Floor {
+  size 20 1.5
+  appearance PBRAppearance {
+    baseColorMap ImageTexture {
+      url [
+        "/home/kelo/librerias/webots/projects/objects/trees/protos/textures/dry_leaf.jpg"
+      ]
+    }
+    roughness 1
+    metalness 0
+  }
+}
+SquareManhole {
+  translation 0 0.05 7.5
+  name "start_point"
+}
+Robot {
+  translation 1.20527 0.5 -1.94496
+  children [
+    Display {
+      translation 0 0.5 0
+      children [
+        DEF SMOKE_SHAPE Shape {
+          appearance PBRAppearance {
+            baseColorMap ImageTexture {
+              repeatS FALSE
+              repeatT FALSE
+            }
+            roughness 1
+            metalness 0
+          }
+          geometry Cylinder {
+            bottom FALSE
+            height 1.5
+            radius 0.25
+            top FALSE
+            subdivision 8
+          }
+          castShadows FALSE
+          isPickable FALSE
+        }
+      ]
+      name "smoke_display"
+      width 500
+      height 320
+    }
+    Display {
+      rotation 1 0 0 0
+      children [
+        DEF FIRE_SHAPE Shape {
+          appearance PBRAppearance {
+            baseColorMap ImageTexture {
+              repeatS FALSE
+              repeatT FALSE
+            }
+            roughness 1
+            metalness 0
+            IBLStrength 6
+          }
+          geometry Cylinder {
+            bottom FALSE
+            height 1
+            radius 0.2
+            top FALSE
+            subdivision 8
+          }
+          castShadows FALSE
+        }
+      ]
+      name "fire_display"
+      width 320
+      height 320
+    }
+  ]
+  name "FireFlame"
+  controller "fire_movement"
+}

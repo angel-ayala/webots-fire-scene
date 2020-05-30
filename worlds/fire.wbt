@@ -1,0 +1,235 @@
+#VRML_SIM R2020a utf8
+WorldInfo {
+  title "Wildfire scenario"
+  basicTimeStep 8
+  defaultDamping Damping {
+    linear 0.5
+    angular 0.5
+  }
+}
+Viewpoint {
+  orientation -0.9995500337489874 -0.029995500202495945 -4.620565259632282e-16 0.34999999999999903
+  position -0.032655498982002595 1.2012879710819164 10.693721976059084
+  near 0.2
+  follow "Mavic 2 PRO"
+  followSmoothness 0.1
+}
+TexturedBackground {
+  texture "noon_park_empty"
+}
+TexturedBackgroundLight {
+  texture "noon_park_empty"
+}
+Forest {
+  translation 10 0 -0.75
+  shape [
+    -20 -10
+    0 -10
+    0 0
+    -20 0
+  ]
+  density 0.3
+  randomSeed 2
+}
+StraightRoadSegment {
+  translation 10 0 5
+  rotation 0 1 0 -1.5707996938995747
+  roadBorderHeight 0.05
+  length 20
+}
+Floor {
+  size 20 1.5
+  appearance PBRAppearance {
+    baseColorMap ImageTexture {
+      url [
+        "/home/kelo/librerias/webots/projects/objects/trees/protos/textures/dry_leaf.jpg"
+      ]
+    }
+    roughness 1
+    metalness 0
+  }
+}
+SquareManhole {
+  translation 0 0.02 7.5
+  name "Starting point"
+  size 1 0.05 1
+}
+Solid {
+  translation -0.00509885 0.052 7.65802
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColorMap ImageTexture {
+          url [
+            "textures/lightwood.jpg"
+          ]
+        }
+        roughness 0.6
+        metalness 0
+      }
+      geometry DEF NIVEL Box {
+        size 0.1 0.013301 0.09
+      }
+    }
+  ]
+  boundingObject USE NIVEL
+  physics Physics {
+    density 500
+  }
+}
+DEF FireSmoke FireSmoke {
+  translation 1.28102 0.5 -2.09381
+}
+DEF Drone Mavic2Pro {
+  translation -0.00322397 0.117 7.55059
+  rotation 0.577349935856137 -0.577349935856137 -0.5773509358560258 -2.0943853071795866
+  controller "drone_controller"
+  bodySlot [
+    Receiver {
+      name "ActionReceiver"
+      channel 6
+    }
+    Emitter {
+      name "StateEmitter"
+      channel 4
+    }
+    DistanceSensor {
+      translation 0.06 0.0332 0.003
+      rotation 1 0 0 1.5708
+      name "front left dist sonar"
+      lookupTable [
+        0.5 50 0
+        20 2000 0
+        40 4000 0.1
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation 0.06 -0.033 0.003
+      rotation 1 0 0 1.5708
+      name "front right dist sonar"
+      lookupTable [
+        0.5 50 0
+        20 2000 0
+        40 4000 0.1
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.1364 0 -0.011
+      rotation 0 -1 0 3.14159
+      children [
+        DEF DIST_SENSOR Transform {
+          rotation 0 0 -0.9999999999999999 1.5707953071795862
+          children [
+            Shape {
+              appearance PBRAppearance {
+                baseColor 0.5 0.5 0.5
+                roughness 0.8
+                metalness 0
+              }
+              geometry Cylinder {
+                height 0.004
+                radius 0.0035
+              }
+            }
+          ]
+        }
+      ]
+      name "rear top dist sonar"
+      lookupTable [
+        0.5 50 0
+        16 1600 0
+        32 3200 0.1
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.1343 0 -0.044
+      rotation 0 -1 0 3.14159
+      children [
+        USE DIST_SENSOR
+      ]
+      name "rear bottom dist sonar"
+      lookupTable [
+        0.5 50 0
+        16 1600 0
+        32 3200 0.1
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.1309 0.016 -0.003
+      rotation 0 0 1 1.5708
+      children [
+        USE DIST_SENSOR
+      ]
+      name "left side dist sonar"
+      lookupTable [
+        0.5 50 0
+        10 1000 0
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.1309 -0.016 -0.003
+      rotation 0.7071067811864082 -0.7071067811864082 -6.276108057863702e-07 -3.1415853071795863
+      children [
+        USE DIST_SENSOR
+      ]
+      name "right side dist sonar"
+      lookupTable [
+        0.5 50 0
+        10 1000 0
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.0255 0 -0.0519
+      rotation 0.5773509358537164 -0.5773479358540498 -0.5773519358536053 -2.0943853071795866
+      name "down front dist sonar"
+      lookupTable [
+        0.5 50 0
+        11 1100 0
+        22 2200 0.1
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.1123 0 -0.0519
+      rotation 0.5773509358537164 -0.5773479358540498 -0.5773519358536053 -2.0943853071795866
+      name "down back dist sonar"
+      lookupTable [
+        0.5 50 0
+        11 1100 0
+        22 2200 0.1
+      ]
+      type "sonar"
+    }
+    DistanceSensor {
+      translation -0.026 0 0.02
+      rotation 0 1 0 -1.5707953071795862
+      name "top dist infrared"
+      lookupTable [
+        0.1 10 0
+        8 800 0
+      ]
+      type "infra-red"
+    }
+  ]
+}
+Robot {
+  children [
+    Receiver {
+      name "StateReceiver"
+      channel 4
+    }
+    Emitter {
+      name "ActionEmitter"
+      channel -1
+    }
+  ]
+  name "agent"
+  controller "<extern>"
+  supervisor TRUE
+}

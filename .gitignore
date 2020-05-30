@@ -1,0 +1,6 @@
+# blacklist IDE files
+*.wbproj
+*.cache
+*.spyproject
+
+**/__pycache__/*
