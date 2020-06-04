@@ -7,8 +7,8 @@ WorldInfo {
   }
 }
 Viewpoint {
-  orientation -0.0964717241334419 0.9880487081633754 -0.12022045058726914 0.39579717734745395
-  position 3.485952431718581 1.343331926993168 3.330674426523601
+  orientation -0.9149269574474438 0.3959652322187157 0.0782316905732059 0.49446997304115375
+  position 4.526347757349474 14.606704593469196 23.276452384875288
   near 0.2
   followSmoothness 0.2
 }
@@ -77,7 +77,7 @@ Robot {
           isPickable FALSE
         }
       ]
-      name "smoke_display"
+      name "smokeDisplay"
       width 500
       height 320
     }
@@ -104,11 +104,17 @@ Robot {
           castShadows FALSE
         }
       ]
-      name "fire_display"
+      name "fireDisplay"
       width 320
       height 320
     }
   ]
   name "FireFlame"
+  boundingObject Capsule {
+    bottom FALSE
+    height 4
+    radius 0.8
+    subdivision 16
+  }
   controller "fire_movement"
 }

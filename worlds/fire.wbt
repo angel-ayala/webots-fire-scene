@@ -1,5 +1,5 @@
 #VRML_SIM R2020a utf8
-WorldInfo {
+DEF World WorldInfo {
   title "Wildfire scenario"
   basicTimeStep 8
   defaultDamping Damping {

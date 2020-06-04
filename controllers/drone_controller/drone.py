@@ -8,16 +8,13 @@ Created on Wed May 27 08:49:45 2020
 
 import numpy as np
 from simple_pid import PID
-from controller import Motor
-from controller import LED
-from controller import Camera
-from controller import GPS
-from controller import Gyro
-from controller import InertialUnit
 
 
 def pi_clip(angle):
-    """Ensure the angle will be in a [-pi, pi] loop."""
+    """Ensure the angle will be in a [-pi, pi] loop.
+    
+    :param float angle: The angle in radians to clip.
+    """
     if angle > 0:
         if angle > np.pi:
             return angle -2*np.pi
@@ -26,18 +23,18 @@ def pi_clip(angle):
             return angle +2*np.pi
     return angle
 
-class FlightControl:
-    """The FlightControl class manage each sensor and actuators of the drone.
+class Drone:
+    """The Drone class manage each sensor and actuators of the drone.
      
     It is developed for the Mavic 2 Pro drone, it consists of GPS, IMU, Gyro, 
     Compass, Camera, LED and Motor nodes.
-    This control unit is designed to stabilize the drone through 4 PID 
-    controllers the drone's gimbal tunned for a 8ms simulation timestep, with 
-    a Damping node in the WorldInfo node with values of 0.5 for both angular 
-    an linear fields.
+    This drone control unit is designed to stabilize the drone through 4 PID 
+    controllers tunned for a 8ms simulation timestep, and the drone's gimbal 
+    with a Damping node in the WorldInfo node with values of 0.5 for both 
+    angular and linear fields.
     
     :param integer timestep: The simulation timestep, 8ms mus be setted, 
-    unexpected behaviour can occur with a different value.
+        unexpected behaviour can occur with a different value.
     :param string name: A name for the controller, just for debug purpose.
     :param float start_alt: The initial altitude to be reached.
     """
@@ -53,43 +50,44 @@ class FlightControl:
         self.roll_correction = np.pi / 2. # pi/2 calc due the initial rotation of the drone
         self.lift_thrust = 68.5  # with this thrust, the drone lifts.
 
-    def init_devices(self, timestep):
+    def init_devices(self, drone, timestep):
         """Initialize each device of the Mavic 2 Pro, in a desired timestep.
         
         In this project the Compass node is not used.
         The camera node is initialized at 33ms timestep to reach 30.303fps.
         
+        :param drone Robot: The instantiated Robot Node class.
         :param integer timestep: The simulation timestep, 8ms mus be setted, 
             unexpected behaviour can occur with a different value.
         """
         # Odometry
-        self.gps = GPS("gps") # Position coordinates [Y,Z,X]
+        self.gps = drone.getGPS("gps") # Position coordinates [Y,Z,X]
         self.gps.enable(timestep)
-        self.imu = InertialUnit("inertial unit")
+        self.imu = drone.getInertialUnit("inertial unit")
         self.imu.enable(timestep)
-        #self.compass = Compass("compass") # Direction degree with north as reference
+        #self.compass = drone.getCompass("compass") # Direction degree with north as reference
         #self.compass.enable(timestep)
-        self.gyro = Gyro("gyro") # Acceleration angle [roll, pitch, yaw]
+        self.gyro = drone.getGyro("gyro") # Acceleration angle [roll, pitch, yaw]
         self.gyro.enable(timestep)
 
-        self.camera = Camera("camera") # Video acquisition
+        self.camera = drone.getCamera("camera") # Video acquisition
         self.camera_rate = 33 #ms 30.303fps
         self.camera.enable(self.camera_rate)
 
         self.leds = [
-            LED("front left led"),
-            LED("front right led")
+            drone.getLED("front left led"),
+            drone.getLED("front right led")
         ]
         # gimbal
-        self.camera_roll = Motor("camera roll")
-        self.camera_pitch = Motor("camera pitch")
+        self.camera_roll = drone.getMotor("camera roll")
+        self.camera_pitch = drone.getMotor("camera pitch")
 
         # Motors
         sides = [
             ['front', 'rear'],
             ['left', 'right']
         ]
-        self.motors = [Motor("{} {} propeller".format(part, side))
+        self.motors = [drone.getMotor("{} {} propeller".format(part, side))
                         for part in sides[0] for side in sides[1]]
 
         return True
@@ -164,40 +162,36 @@ class FlightControl:
     def get_image(self):
         """Get the Camera node image with size and channels.
         
-        :return the data buffer, height, width, and the channels are 4
-            by default with RGBA values
+        :return the data buffer with RGBA values
         """
-        data = [
-            self.camera.getImage(), 
-            self.camera.getHeight(), 
-            self.camera.getWidth(), 
-            4 #channels
-        ]
+        return self.camera.getImage()
     
-        return data
+    def get_camera_metadata(self):
+        """Get the camera image dimension and channels."""
+        return self.camera.getHeight(), self.camera.getWidth(), 4 #channels
 
-    def calculate_velocity(self, phi=0., theta=0., psi=0., thrust=0.):
-        """"Calculate the motors velocity.
+    def control(self, phi=0., theta=0., psi=0., thrust=0.):
+        """Control the drone's motor for a given angles and thrust.
         
-        In order to reach the desired angles and altitude for the drone, the 
-        arguments values are the setpoint for each PID controller, for the case
-        of the altitude and yaw angle, use a target value that is update by the
-        amount of the input value.
+        In order to reach the desired angles and altitude, the drone must vary
+        the velocity of each motor. In order to achieve this the arguments 
+        passed are used as setpoint for each PID controller, for the case of 
+        the altitude and yaw angle, a target value is used and is update by the
+        amount of the argument value. If no value is passed the drone will hold
+        its posision.
         
         :param float phi: The phi angle for the roll setpoint.
         :param float theta: The theta angle for the pitch setpoint.
         :param float psi: The psi variation value for the target angle of yaw.
         :param float thrust: The thrust variation value for the target of the 
             altitude.
-        
-        :return float list with the roll, pitch, yaw and thrust velocities.
         """
         # compute current state
         acceleration, angles, position = self.get_odometry()
         roll_angle = angles[0] + self.roll_correction# + np.pi / 2.
         pitch_angle = angles[1]
         yaw_angle = angles[2]
-        altitude = position[1]
+        altitude_position = position[1]
         # update target values
         self.target_yaw += psi
         self.target_yaw = pi_clip(self.target_yaw)
@@ -206,45 +200,32 @@ class FlightControl:
         # Compute ouput values
         # Roll phi angle
         self.rollPID.setpoint = phi
-        roll_input = (self.rollPID(roll_angle, dt=self.deltaT) *-1 
+        roll = (self.rollPID(roll_angle, dt=self.deltaT) *-1 
                       + acceleration[0])
         # Pitch theta angle
         self.pitchPID.setpoint = theta
-        pitch_input = (self.pitchPID(pitch_angle, dt=self.deltaT) *-1 
+        pitch = (self.pitchPID(pitch_angle, dt=self.deltaT) *-1 
                        - acceleration[1])
         # Yaw psi angle
         self.yawPID.setpoint = self.target_yaw
-        yaw_input = (self.yawPID(yaw_angle, dt=self.deltaT) *-1 
+        yaw = (self.yawPID(yaw_angle, dt=self.deltaT) *-1 
                      + acceleration[2])
         # Vertical thrust
         self.vertPID.setpoint = self.target_altitude
-        vertical_input = self.vertPID(altitude, dt=self.deltaT)
+        altitude = self.vertPID(altitude_position, dt=self.deltaT)
 
-        return roll_input, pitch_input, yaw_input, vertical_input
-
-    def apply_velocity(self, roll, pitch, yaw, thrust):
-        """Apply the input velocity of the altitude and each angle.
-        
-        Actuate over the motors with the specified velocity. Additionally, 
-        update the led's blink and stabilize the drone's gimbal.
-        
-        :param float roll: The roll velocity.
-        :param float pitch: The pitch velocity.
-        :param float yaw: The yaw velocity.
-        :param float thrust: The thrust velocity.
-        """
         # update time
         self.time_counter += self.deltaT
         # leds
         self.blink_leds()
         # camera
-        self.gimbal_stabilize(self.gyro.getValues())
+        self.gimbal_stabilize(acceleration)
 
         # Actuate the motors taking into consideration all the computed inputs.
-        fl_motor = self.lift_thrust + thrust - roll - pitch + yaw # front left
-        fr_motor = self.lift_thrust + thrust + roll - pitch - yaw # front right
-        rl_motor = self.lift_thrust + thrust - roll + pitch - yaw # rear leaf'
-        rr_motor = self.lift_thrust + thrust + roll + pitch + yaw # rear right
+        fl_motor = self.lift_thrust + altitude - roll - pitch + yaw # front left
+        fr_motor = self.lift_thrust + altitude + roll - pitch - yaw # front right
+        rl_motor = self.lift_thrust + altitude - roll + pitch - yaw # rear left
+        rr_motor = self.lift_thrust + altitude + roll + pitch + yaw # rear right
         # CounterClockWise motor propellers
         fr_motor *= -1 # CCW
         rl_motor *= -1 # CCW

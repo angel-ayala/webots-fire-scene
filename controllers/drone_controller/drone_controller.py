@@ -8,7 +8,7 @@ Created on Wed Apr 29 23:16:03 2020
 
 import struct
 from controller import Robot
-from flight_control import FlightControl
+from drone import Drone
 
 
 # Drone Robot
@@ -25,16 +25,28 @@ class DroneController(Robot):
         self.timestep = int(self.getBasicTimeStep())
 
         # Initialize Flight Control
-        print('Initiating Drone...', end='')
-        self.fc = FlightControl(self.timestep)
-        self.fc.init_devices(self.timestep)
-        self.fc.init_motors()
+        print('Initializing Drone...', end=' ')
+        self.drone = Drone(self.timestep)
+        self.drone.init_devices(self, self.timestep)
+        self.drone.init_motors()
 
         # Initialize comms
         self.state = self.getEmitter('StateEmitter') # channel 4
         self.action = self.getReceiver('ActionReceiver') # channel 6
         self.action.enable(self.timestep)
+        self.sync() # devices sync
         print('OK')
+        
+    def _step(self):
+        """Do a Robot.step()."""
+        return self.step(self.timestep)
+        
+    def sync(self):
+        """Synchronize device info with remote control."""
+        height, width, channels = self.drone.get_camera_metadata()
+        data = struct.pack('3i', height, width, channels)
+        self.state.send(data)
+        self.cam_info = [height, width, channels]
 
     def run(self):
         """Run controller's main loop.
@@ -47,7 +59,8 @@ class DroneController(Robot):
         different angles and the altitude.
         """
         # control loop
-        while self.step(self.timestep) != -1:
+        print('Running...')
+        while self._step() != -1:
             # values change
             roll_disturb = 0.
             pitch_disturb = 0.
@@ -55,9 +68,12 @@ class DroneController(Robot):
             target_disturb = 0. #drone.target_altitude
 
             # send state
-            img_buffer, img_height, img_width, channels = self.fc.get_image()
-            fmt = "3i{}s".format(channels*img_width*img_height)
-            msg = struct.pack(fmt, img_height, img_width, channels, img_buffer)
+            img_buffer = self.drone.get_image()
+            buffer_size = 1
+            for elm in self.cam_info:
+                buffer_size *= elm
+            fmt = "{}s".format(buffer_size)
+            msg = struct.pack(fmt, img_buffer)
             self.state.send(msg) # image buffer
 
             # Receiver's action
@@ -71,9 +87,8 @@ class DroneController(Robot):
                 self.action.nextPacket()
 
             # actuate Drone's motors
-            roll, pitch, yaw, thrust = self.fc.calculate_velocity(roll_disturb,
-                                        pitch_disturb, yaw_disturb, target_disturb)
-            self.fc.apply_velocity(roll, pitch, yaw, thrust)
+            self.drone.control(roll_disturb, pitch_disturb, yaw_disturb, 
+                               target_disturb)
 
 if __name__ == '__main__':
     # run controller

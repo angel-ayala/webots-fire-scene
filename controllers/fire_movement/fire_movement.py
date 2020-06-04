@@ -21,6 +21,7 @@ class FireMovement(Robot):
         self.timeStep = 33 #ms 30.303fps
         self.init_displays()
         self.load_sprites()
+        print('Initialized')
 
     def init_displays(self):
         """Initialize the fire and smoke Display nodes."""
@@ -70,6 +71,7 @@ class FireMovement(Robot):
         Change the sprite presented in the Display nodes.
         """
         # main control loop:
+        print('Running...')
         counter = 1
         while self.step(self.timeStep) != -1:
         	self.move_smoke(counter)
