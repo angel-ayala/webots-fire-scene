@@ -9,8 +9,8 @@ DEF World WorldInfo {
   coordinateSystem "NUE"
 }
 Viewpoint {
-  orientation -0.9999678136495438 -0.0021458963119213863 0.007730898652135565 0.22984394960434337
-  position 0.38121807590884804 1.2109918067949592 11.8657202137421
+  orientation -0.02375544680241073 0.9989272028319275 0.03975075080547303 1.5741751694381914
+  position 48.51465212167332 0.2219103248759668 -0.051275672181403165
   near 0.2
   follow "Mavic 2 PRO"
   followSmoothness 0.1
@@ -21,25 +21,10 @@ TexturedBackground {
 TexturedBackgroundLight {
   texture "noon_park_empty"
 }
-Forest {
-  translation 10 0 -0.75
-  shape [
-    -20 -10
-    0 -10
-    0 0
-    -20 0
-  ]
-  density 0.3
-  randomSeed 2
-}
-StraightRoadSegment {
-  translation 10 0 5
-  rotation 0 1 0 -1.5707996938995747
-  roadBorderHeight 0.05
-  length 20
-}
-Floor {
-  size 20 1.5
+DEF FlightArea Floor {
+  translation 0 -0.0001 0
+  size 100 100
+  tileSize 1 1
   appearance PBRAppearance {
     baseColorMap ImageTexture {
       url [
@@ -50,13 +35,38 @@ Floor {
     metalness 0
   }
 }
+DEF ForestArea Forest {
+  shape [
+    -50 -50
+    40 -50
+    40 50
+    -50 50
+  ]
+  density 0.5
+  randomSeed 2
+  maxHeight 10
+  minHeight 3
+}
+Solid {
+  translation -5 5 0
+  name "ForestBB"
+  boundingObject Box {
+    size 90 10 100
+  }
+}
+StraightRoadSegment {
+  translation 45.7 0 -50
+  length 100
+}
 SquareManhole {
-  translation 0 0.02 7.5
+  translation 47 0.02 0
+  rotation 0 1 0 1.5708
   name "Starting point"
   size 1 0.05 1
 }
 Solid {
-  translation -0.00509885 0.052 7.65802
+  translation 47.12 0.052 0
+  rotation 0 1 0 -1.5707953071795862
   children [
     Shape {
       appearance PBRAppearance {
@@ -79,11 +89,13 @@ Solid {
   }
 }
 DEF FireSmoke FireSmoke {
-  translation 1.28102 0.5 -2.09381
+  translation 40 0.5 0
+  fireHeight 8.248705931106812
+  fireRadius 2.5102593433660205
 }
 DEF Drone Mavic2Pro {
-  translation -0.00322397 0.117 7.55059
-  rotation 0.577349935856137 -0.577349935856137 -0.5773509358560258 -2.0943853071795866
+  translation 47 0.117 0
+  rotation -1.6952506741191076e-09 0.707104281181134 0.7071092811831223 3.14159
   controller "drone_controller"
   bodySlot [
     Receiver {
@@ -101,7 +113,7 @@ DEF Drone Mavic2Pro {
       lookupTable [
         0.5 50 0
         20 2000 0
-        40 4000 0.1
+        40 4000 0
       ]
       type "sonar"
     }
@@ -112,7 +124,7 @@ DEF Drone Mavic2Pro {
       lookupTable [
         0.5 50 0
         20 2000 0
-        40 4000 0.1
+        40 4000 0
       ]
       type "sonar"
     }
@@ -141,7 +153,7 @@ DEF Drone Mavic2Pro {
       lookupTable [
         0.5 50 0
         16 1600 0
-        32 3200 0.1
+        32 3200 0
       ]
       type "sonar"
     }
@@ -155,7 +167,7 @@ DEF Drone Mavic2Pro {
       lookupTable [
         0.5 50 0
         16 1600 0
-        32 3200 0.1
+        32 3200 0
       ]
       type "sonar"
     }
@@ -192,7 +204,7 @@ DEF Drone Mavic2Pro {
       lookupTable [
         0.5 50 0
         11 1100 0
-        22 2200 0.1
+        22 2200 0
       ]
       type "sonar"
     }
@@ -203,7 +215,7 @@ DEF Drone Mavic2Pro {
       lookupTable [
         0.5 50 0
         11 1100 0
-        22 2200 0.1
+        22 2200 0
       ]
       type "sonar"
     }
@@ -218,19 +230,11 @@ DEF Drone Mavic2Pro {
       type "infra-red"
     }
   ]
-}
-Robot {
-  children [
-    Receiver {
-      name "StateReceiver"
-      channel 4
-    }
-    Emitter {
-      name "ActionEmitter"
-      channel -1
+  cameraSlot [
+    Camera {
+      rotation -1 0 0 0.3490659
+      width 400
+      height 240
     }
   ]
-  name "agent"
-  controller "<extern>"
-  supervisor TRUE
 }

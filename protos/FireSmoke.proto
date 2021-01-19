@@ -11,12 +11,18 @@ PROTO FireSmoke [
   field SFFloat    fireHeight       1                   # Is `Cylinder.height`.
   field SFFloat    fireRadius       0.2                 # Is `Cylinder.radius`.
   field SFString   controller       "fire_movement"     # Is `Robot.controller`.
-  field SFString   controllerArgs   ""                  # Is `Robot.controllerArgs`.
+  field MFString   controllerArgs   ""                  # Is `Robot.controllerArgs`.
   field SFString   customData       ""                  # Is `Robot.customData`.
   field SFBool     synchronization  TRUE                # Is `Robot.synchronization`
 #  field SFBool     showSmoke    TRUE
 ]
 {
+%{ 
+local smokeHeight = 25
+if fields.fireHeight.value * 1.5 >= smokeHeight then 
+  smokeHeight = fields.fireHeight.value * 1.5
+end
+}%
 Robot {
   name IS name
   translation IS translation
@@ -26,9 +32,8 @@ Robot {
   customData IS customData
   synchronization IS synchronization
   children [
-#    %{ if fields.showSmoke.value then }%
     Display {
-      translation 0 %{= fields.fireHeight.value * 0.5}% 0
+      translation 0 %{= smokeHeight * 0.3333}% 0
       children [
         DEF SMOKE_SHAPE Shape {
           appearance PBRAppearance {
@@ -41,7 +46,7 @@ Robot {
           }
           geometry Cylinder {
             bottom FALSE
-            height %{= fields.fireHeight.value * 1.5}%
+            height %{= smokeHeight }%
             radius %{= fields.fireRadius.value * 1.25}%
             top FALSE
             subdivision 8
@@ -53,7 +58,6 @@ Robot {
       width 500
       height 320
     }
-#    %{ end }%
     Display {
       rotation 1 0 0 0
       children [

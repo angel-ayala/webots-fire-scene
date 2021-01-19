@@ -12,16 +12,17 @@ from simple_pid import PID
 
 def pi_clip(angle):
     """Ensure the angle will be in a [-pi, pi] loop.
-    
+
     :param float angle: The angle in radians to clip.
     """
     if angle > 0:
         if angle > np.pi:
-            return angle -2*np.pi
+            return angle - 2 * np.pi
     else:
         if angle < -np.pi:
-            return angle +2*np.pi
+            return angle + 2 * np.pi
     return angle
+
 
 class Drone:
     """The Drone class manage each sensor and actuators of the drone.
@@ -38,40 +39,69 @@ class Drone:
     :param string name: A name for the controller, just for debug purpose.
     :param float start_alt: The initial altitude to be reached.
     """
-    
-    def __init__(self, timestep, name='Mavic', start_alt=1.):
+
+    def __init__(self, name='Mavic', start_alt=1., start_yaw=np.pi):
         # Time helpers
-        self.deltaT = timestep / 1000.
         self.time_counter = 0
 
         # Variables
-        self.target_altitude = start_alt # drone's initial position
-        self.target_yaw = np.pi / 2. # drone's initial orientation
-        self.roll_correction = np.pi / 2. # pi/2 calc due the initial rotation of the drone
+        self.target_altitude = start_alt  # drone's initial position
+        self.target_yaw = start_yaw  # drone's initial orientation
+        self.roll_correction = np.pi / 2.  # due to drone's initial rotation
         self.lift_thrust = 68.5  # with this thrust, the drone lifts.
+
+    def init_sensors(self, drone, timestep):
+        """Initialize each sensor distance of the Mavic 2 Pro.
+
+        :param drone Robot: The instantiated Robot Node class.
+        :param integer timestep: The simulation timestep, 8ms mus be setted,
+            unexpected behaviour can occur with a different value.
+        """
+        self.sensors_id = ['front left', 'front right',
+                           'rear top', 'rear bottom',
+                           'left side', 'right side',
+                           'down front', 'down back']
+        # instantiate sensors
+        self.sensors = [drone.getDistanceSensor("{} dist sonar".format(sid))
+                        for sid in self.sensors_id]
+        self.sensors_id.append('top dist')
+        self.sensors.append(drone.getDistanceSensor("top dist infrared"))
+        # activate sensors
+        for sensor in self.sensors:
+            sensor.enable(timestep)
+
+        return True
 
     def init_devices(self, drone, timestep):
         """Initialize each device of the Mavic 2 Pro, in a desired timestep.
-        
+
         In this project the Compass node is not used.
-        The camera node is initialized at 33ms timestep to reach 30.303fps.
-        
+        The camera node is initialized at 33ms timestep to reach ~30fps.
+
         :param drone Robot: The instantiated Robot Node class.
-        :param integer timestep: The simulation timestep, 8ms mus be setted, 
+        :param integer timestep: The simulation timestep, 8ms mus be setted,
             unexpected behaviour can occur with a different value.
         """
-        # Odometry
-        self.gps = drone.getGPS("gps") # Position coordinates [Y,Z,X]
+        # time
+        self.deltaT = timestep / 1000.
+        # Drone's Odometry
+        # Position coordinates [Y, Z ,X]
+        self.gps = drone.getGPS("gps")
         self.gps.enable(timestep)
+        # Angles respect global coordinates [roll, pitch, yaw]
         self.imu = drone.getInertialUnit("inertial unit")
         self.imu.enable(timestep)
-        #self.compass = drone.getCompass("compass") # Direction degree with north as reference
-        #self.compass.enable(timestep)
-        self.gyro = drone.getGyro("gyro") # Acceleration angle [roll, pitch, yaw]
+        # Accelertion angles [roll, pitch, yaw]
+        self.gyro = drone.getGyro("gyro")
         self.gyro.enable(timestep)
+        # Direction degree with north as reference
+        self.compass = drone.getCompass("compass")
+        self.compass.enable(timestep)
 
-        self.camera = drone.getCamera("camera") # Video acquisition
-        self.camera_rate = 33 #ms 30.303fps
+        # Video acquisition
+        fps = 25
+        self.camera = drone.getCamera("camera")
+        self.camera_rate = 1000 // fps
         self.camera.enable(self.camera_rate)
 
         self.leds = [
@@ -88,55 +118,61 @@ class Drone:
             ['left', 'right']
         ]
         self.motors = [drone.getMotor("{} {} propeller".format(part, side))
-                        for part in sides[0] for side in sides[1]]
+                       for part in sides[0] for side in sides[1]]
 
         return True
 
     def init_motors(self):
         """Initialize the Motor nodes and the PID controllers."""
-        #self.maxVelocity = 576# -> 5 m/s
-        #self.maxTorque = 30
+        # self.maxVelocity = 576# -> 5 m/s
+        # self.maxTorque = 30
 
         # motor init
         for m in self.motors:
             m.setPosition(float('inf'))
             m.setVelocity(1.)
 
-        # Propeller PID control params with Ziegler–Nichols PID tuning
+        # Propeller PID control params tunned with Ziegler–Nichols PID
         K_u = 150.
-        T_u = 342.857 / 1000. # ms
+        T_u = 342.857 / 1000.  # ms
         # no overshoot
-        params_roll = { 'P': K_u/5., 'I': (2./5.)*K_u/T_u, 
-                       'D': K_u*T_u/15., 'sp': 0. }
-        self.rollPID = PID(params_roll['P'], params_roll['I'], 
-                           params_roll['D'], setpoint=params_roll['sp'], 
+        params_roll = {'P': K_u / 5., 'I': (2. / 5.) * K_u / T_u,
+                       'D': K_u * T_u / 15., 'sp': 0.}
+        self.rollPID = PID(params_roll['P'], params_roll['I'],
+                           params_roll['D'], setpoint=params_roll['sp'],
                            output_limits=(-2., 2.), sample_time=self.deltaT)
 
         K_u = 150.
-        T_u = 682.66 / 1000. # ms
+        T_u = 682.66 / 1000.  # ms
         # no overshoot
-        params_pitch = { 'P': K_u/5., 'I': (2./5.)*K_u/T_u, 
-                        'D': K_u*T_u/15., 'sp': 0. }
-        self.pitchPID = PID(params_pitch['P'], params_pitch['I'], 
-                            params_pitch['D'], setpoint=params_pitch['sp'], 
+        params_pitch = {'P': K_u/5.,
+                        'I': (2. / 5.) * K_u / T_u,
+                        'D': K_u*T_u/15.,
+                        'sp': 0.}
+        self.pitchPID = PID(params_pitch['P'], params_pitch['I'],
+                            params_pitch['D'], setpoint=params_pitch['sp'],
                             output_limits=(-2., 2.), sample_time=self.deltaT)
         K_u = 20.
-        T_u = 1621.33 / 1000. # ms
-        #PD
-        params_yaw =  { 'P': 0.8*K_u, 'I':0., 'D': K_u*T_u/10., 
-                       'sp': self.target_yaw }
-        self.yawPID = PID(params_yaw['P'], params_yaw['I'], params_yaw['D'], 
-                          setpoint=params_yaw['sp'], output_limits=(-2., 2.), 
+        T_u = 1621.33 / 1000.  # ms
+        # PD
+        params_yaw = {'P': 0.8 * K_u,
+                      'I': 0.,
+                      'D': K_u * T_u / 10.,
+                      'sp': self.target_yaw}
+        self.yawPID = PID(params_yaw['P'], params_yaw['I'], params_yaw['D'],
+                          setpoint=params_yaw['sp'], output_limits=(-2., 2.),
                           sample_time=self.deltaT, error_map=pi_clip)
 
         K_u = 20.
-        T_u = 2668.8 / 1000. # ms
-        #PD
-        params_vert =  { 'P': 0.8*K_u, 'I':0., 'D': K_u*T_u/10., 
-                        'sp': self.target_altitude }
-        self.vertPID = PID(params_vert['P'], params_vert['I'], params_vert['D'],
-                        setpoint=params_vert['sp'],  output_limits=(-5., 5.), 
-                        sample_time=self.deltaT)
+        T_u = 2668.8 / 1000.  # ms
+        # PD
+        params_vert = {'P': 0.8 * K_u,
+                       'I': 0.,
+                       'D': K_u * T_u / 10.,
+                       'sp': self.target_altitude}
+        self.vertPID = PID(params_vert['P'], params_vert['I'],
+                           params_vert['D'], setpoint=params_vert['sp'],
+                           output_limits=(-5., 5.), sample_time=self.deltaT)
 
         return True
 
@@ -157,38 +193,50 @@ class Drone:
         angles = self.imu.getRollPitchYaw()
         position = self.gps.getValues()
 
-        return acceleration, angles, position
+        compass = self.compass.getValues()
+        north_deg = np.arctan2(compass[0], compass[1])
+        north_deg = (north_deg - 1.5708) / np.pi * 180
+
+        if north_deg < 0.:
+            north_deg += 360.
+
+        return acceleration, angles, position, north_deg
 
     def get_image(self):
         """Get the Camera node image with size and channels.
-        
-        :return the data buffer with RGBA values
+
+        :return the data buffer with BGRA values
         """
         return self.camera.getImage()
-    
+
+    def get_sensors_info(self):
+        """Get the Distance sensors Nodes' info."""
+        return [0 if np.isnan(s.getValue()) else int(s.getValue())
+                for s in self.sensors]
+
     def get_camera_metadata(self):
         """Get the camera image dimension and channels."""
-        return self.camera.getHeight(), self.camera.getWidth(), 4 #channels
+        return self.camera.getHeight(), self.camera.getWidth(), 4  # channels
 
     def control(self, phi=0., theta=0., psi=0., thrust=0.):
         """Control the drone's motor for a given angles and thrust.
-        
+
         In order to reach the desired angles and altitude, the drone must vary
-        the velocity of each motor. In order to achieve this the arguments 
-        passed are used as setpoint for each PID controller, for the case of 
+        the velocity of each motor. In order to achieve this the arguments
+        passed are used as setpoint for each PID controller, for the case of
         the altitude and yaw angle, a target value is used and is update by the
         amount of the argument value. If no value is passed the drone will hold
         its posision.
-        
+
         :param float phi: The phi angle for the roll setpoint.
         :param float theta: The theta angle for the pitch setpoint.
         :param float psi: The psi variation value for the target angle of yaw.
-        :param float thrust: The thrust variation value for the target of the 
+        :param float thrust: The thrust variation value for the target of the
             altitude.
         """
         # compute current state
-        acceleration, angles, position = self.get_odometry()
-        roll_angle = angles[0] + self.roll_correction# + np.pi / 2.
+        acceleration, angles, position, _ = self.get_odometry()
+        roll_angle = angles[0] + self.roll_correction
         pitch_angle = angles[1]
         yaw_angle = angles[2]
         altitude_position = position[1]
@@ -200,16 +248,19 @@ class Drone:
         # Compute ouput values
         # Roll phi angle
         self.rollPID.setpoint = phi
-        roll = (self.rollPID(roll_angle, dt=self.deltaT) *-1 
-                      + acceleration[0])
+        roll = (self.rollPID(roll_angle, dt=self.deltaT) * -1
+                + acceleration[0])
+
         # Pitch theta angle
-        self.pitchPID.setpoint = theta
-        pitch = (self.pitchPID(pitch_angle, dt=self.deltaT) *-1 
-                       - acceleration[1])
+        self.pitchPID.setpoint = theta * -1  # positive angle to front
+        pitch = (self.pitchPID(pitch_angle, dt=self.deltaT) * -1
+                 - acceleration[1])
+
         # Yaw psi angle
         self.yawPID.setpoint = self.target_yaw
-        yaw = (self.yawPID(yaw_angle, dt=self.deltaT) *-1 
-                     + acceleration[2])
+        yaw = (self.yawPID(yaw_angle, dt=self.deltaT) * -1
+               + acceleration[2])
+
         # Vertical thrust
         self.vertPID.setpoint = self.target_altitude
         altitude = self.vertPID(altitude_position, dt=self.deltaT)
@@ -222,13 +273,15 @@ class Drone:
         self.gimbal_stabilize(acceleration)
 
         # Actuate the motors taking into consideration all the computed inputs.
-        fl_motor = self.lift_thrust + altitude - roll - pitch + yaw # front left
-        fr_motor = self.lift_thrust + altitude + roll - pitch - yaw # front right
-        rl_motor = self.lift_thrust + altitude - roll + pitch - yaw # rear left
-        rr_motor = self.lift_thrust + altitude + roll + pitch + yaw # rear right
+        fl_motor = self.lift_thrust + altitude - roll - pitch + yaw  # front L
+        fr_motor = self.lift_thrust + altitude + roll - pitch - yaw  # front R
+        rl_motor = self.lift_thrust + altitude - roll + pitch - yaw  # rear L
+        rr_motor = self.lift_thrust + altitude + roll + pitch + yaw  # rear R
+
         # CounterClockWise motor propellers
-        fr_motor *= -1 # CCW
-        rl_motor *= -1 # CCW
+        fr_motor *= -1  # CCW
+        rl_motor *= -1  # CCW
+
         # actuate over the motors
         if not np.isnan(fl_motor):
             self.motors[0].setVelocity(fl_motor)
