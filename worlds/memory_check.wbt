@@ -238,3 +238,18 @@ DEF Drone Mavic2Pro {
     }
   ]
 }
+Robot {
+  children [
+    Receiver {
+      name "StateReceiver"
+      channel 4
+    }
+    Emitter {
+      name "ActionEmitter"
+      channel 6
+    }
+  ]
+  name "agent"
+  controller "sim_controller"
+  supervisor TRUE
+}

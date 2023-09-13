@@ -39,8 +39,8 @@ class FireMovement(Robot):
 
     def init_displays(self):
         """Initialize the fire and smoke Display nodes."""
-        self.fire_screen = self.getDisplay("fireDisplay")
-        self.smoke_screen = self.getDisplay("smokeDisplay")
+        self.fire_screen = self.getDevice("fireDisplay")
+        self.smoke_screen = self.getDevice("smokeDisplay")
 
     def load_sprites(self):
         """Load and configure the sprite cheet of fire and smoke."""
@@ -57,7 +57,7 @@ class FireMovement(Robot):
         smoke_coords = [0, -160, -320]
         smoke_frame_xy = [[y1, x1] for x1 in fire_coords
                           for y1 in smoke_coords]
-        self.smoke_frame_xy = smoke_frame_xy[6:11]
+        self.smoke_frame_xy = smoke_frame_xy[5:12]
         self.n_smoke_frames = len(self.smoke_frame_xy)
 
     def move_fire(self, step=-1):
@@ -85,7 +85,7 @@ class FireMovement(Robot):
         Change the sprite presented in the Display nodes.
         """
         # main control loop:
-        print('Running...')
+        print('Fire movement is active')
         counter = 1
         while self.step(self.timeStep) != -1:
             self.move_smoke(counter)
@@ -96,8 +96,8 @@ class FireMovement(Robot):
         self.smoke_screen.imageDelete(self.smoke_img)
         self.fire_screen.imageDelete(self.fire_img)
 
-
 if __name__ == '__main__':
     # run controller
     controller = FireMovement()
     controller.run()
+    del controller

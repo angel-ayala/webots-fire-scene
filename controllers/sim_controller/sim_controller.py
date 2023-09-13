@@ -151,8 +151,8 @@ class SimController(Supervisor):
 
     def init_comms(self):
         """Initialize the communication nodes."""
-        self.action = self.getEmitter('ActionEmitter')  # channel 6
-        self.state = self.getReceiver('StateReceiver')  # channel 4
+        self.action = self.getDevice('ActionEmitter')  # channel 6
+        self.state = self.getDevice('StateReceiver')  # channel 4
         self.state.enable(self.timestep)
         return self
 
@@ -267,7 +267,7 @@ class SimController(Supervisor):
         """Do a Robot.step(timestep)."""
         self.step(self.timestep)
 
-    def set_fire_dim(self, fire_height=2., fire_radius=0.5):
+    def set_fire_dim(self, fire_height=7., fire_radius=5.):
         """
         Set the FireSmoke Node's height and radius.
 
@@ -300,26 +300,28 @@ class SimController(Supervisor):
         """
         fire_radius = self.fire['radius']
         if fire_pos is None:  # randomize position
-            fire_pos = self.fire['pos'].copy()  # current position
+            fire_p = self.fire['pos'].copy()  # current position
             # get forest limits
             X_range = [self.forest_area[3][0], self.forest_area[1][0]]
             Z_range = [self.forest_area[1][1], self.forest_area[3][1]]
 
             # randomize position
-            fire_pos[0] = self.np_random.uniform(fire_radius - abs(X_range[0]),
+            fire_p[0] = self.np_random.uniform(fire_radius - abs(X_range[0]),
                                                  X_range[1] - fire_radius)
-            fire_pos[2] = self.np_random.uniform(fire_radius - abs(Z_range[0]),
+            fire_p[2] = self.np_random.uniform(fire_radius - abs(Z_range[0]),
                                                  Z_range[1] - fire_radius)
+        elif len(fire_pos) == 2:
+            fire_p = [fire_pos[0], 0, fire_pos[1]]
 
-        fire_pos[1] = self.fire['height'] * 0.5  # update height
+        fire_p[1] = self.fire['height'] * 0.5  # update height
 
         # FireSmoke node fields
-        self.fire['set_pos'](list(fire_pos))
-        self.fire['pos'] = np.array(fire_pos)
+        self.fire['set_pos'](list(fire_p))
+        self.fire['pos'] = np.array(fire_p)
         self.risk_distance = fire_radius + self.fire['height'] * 4
         # self.risk_distance = round(self.risk_distance**2, 4)
 
-        return fire_pos, self.risk_distance
+        return fire_p, self.risk_distance
 
     def randomize_fire_position(self):
         """Randomize the size and position of the FireSmoke node.
@@ -530,8 +532,8 @@ if __name__ == '__main__':
 
         # Start simulation with random FireSmoke position
         controller.sync(True)
-        controller.randomize_fire_position()
-        controller.play()
+        # controller.randomize_fire_position()
+        controller.play_faster()
         run_flag = True
 
         print('Fire scene is running')
@@ -543,11 +545,6 @@ if __name__ == '__main__':
             pitch_angle = 0.
             yaw_angle = 0.  # drone.yaw_orientation
             altitude = 0.  # drone.target_altitude
-            # capture state
-            image, sensors, angles, north_deg = controller.get_state()
-            if show:
-                cv2.imshow("Drone's live view", image)
-                cv2.waitKey(1)
 
             while key > 0:
                 # roll
@@ -582,22 +579,29 @@ if __name__ == '__main__':
                 yaw_angle,
                 altitude
             ]
-            controller.take_action(action)
-            print("DIST: {:.2f} [{:.2f}]".format(
-                controller.get_goal_distance(), controller.risk_distance),
-                "(INFO:",
-                # "obj_det: {},".format(
-                # controller.check_near_object(sensors)),
-                # "out_alt: {},".format(
-                # controller.check_altitude()),
-                # "out_area: {},".format(
-                # controller.check_flight_area()),
-                # "is_flip: {},".format(
-                # controller.check_flipped(angles)),
-                "north: {:.2f})".format(
-                    north_deg),
-                np.array(controller.drone_node.getPosition())
-                )
+            # perform action
+            controller.take_action(action)            
+            
+            # capture state
+            image, sensors, angles, north_deg = controller.get_state()
+            if show:
+                cv2.imshow("Drone's live view", image)
+                cv2.waitKey(1)
+            # print("DIST: {:.2f} [{:.2f}]".format(
+            #     controller.get_goal_distance(), controller.risk_distance),
+            #     "(INFO:",
+            #     # "obj_det: {},".format(
+            #     # controller.check_near_object(sensors)),
+            #     # "out_alt: {},".format(
+            #     # controller.check_altitude()),
+            #     # "out_area: {},".format(
+            #     # controller.check_flight_area()),
+            #     # "is_flip: {},".format(
+            #     # controller.check_flipped(angles)),
+            #     "north: {:.2f})".format(
+            #         north_deg),
+            #     np.array(controller.drone_node.getPosition())
+            #     )
 
         if show:
             cv2.destroyAllWindows()
@@ -609,4 +613,4 @@ if __name__ == '__main__':
     except Exception as e:
         traceback.print_tb(e.__traceback__)
         print(e)
-        controller.reset_simulation()()
+        controller.reset_simulation()

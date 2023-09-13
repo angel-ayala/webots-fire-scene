@@ -55,7 +55,7 @@ Robot {
         }
       ]
       name "smokeDisplay"
-      width 500
+      width 480
       height 320
     }
     Display {

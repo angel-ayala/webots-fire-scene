@@ -1,4 +1,4 @@
-#VRML_SIM R2020b utf8
+#VRML_SIM R2021a utf8
 DEF World WorldInfo {
   title "Wildfire scenario"
   basicTimeStep 8
@@ -247,7 +247,7 @@ Robot {
     }
     Emitter {
       name "ActionEmitter"
-      channel -1
+      channel 6
     }
   ]
   name "agent"

@@ -5,8 +5,8 @@ Created on Wed Apr 29 23:16:03 2020
 
 @author: Angel Ayala <angel4ayala [at] gmail.com>
 """
-
 import struct
+import numpy as np
 from controller import Robot
 from drone import Drone
 
@@ -27,14 +27,14 @@ class DroneController(Robot):
 
         # Initialize Flight Control
         print('Initializing Drone Control...', end=' ')
-        self.drone = Drone(start_alt=1.5)
+        self.drone = Drone(start_alt=1., start_yaw=np.pi)
         self.drone.init_devices(self, self.timestep)
         self.drone.init_sensors(self, self.timestep)
         self.drone.init_motors()
 
         # Initialize comms
-        self.state = self.getEmitter('StateEmitter')  # channel 4
-        self.action = self.getReceiver('ActionReceiver')  # channel 6
+        self.state = self.getDevice('StateEmitter')  # channel 4
+        self.action = self.getDevice('ActionReceiver')  # channel 6
         self.action.enable(self.timestep)
         # self.sync()
         print('OK')
@@ -60,9 +60,12 @@ class DroneController(Robot):
 
         # wait for initial height if given
         print('Syncing initial altitude')
-        while self.action.getQueueLength() == 0:
+        sync_timeout = 1250  # 10 sec
+        while (self.action.getQueueLength() == 0 and
+               sync_timeout > 0):
             print('.', end='')
             self._step()
+            sync_timeout -= 1
 
         if self.action.getQueueLength() > 0:
             target_altitude = struct.unpack('1f', self.action.getData())[0]
@@ -123,3 +126,4 @@ if __name__ == '__main__':
     # run controller
     controller = DroneController()
     controller.run()
+    print('Drone out!')

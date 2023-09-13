@@ -62,10 +62,10 @@ class Drone:
                            'left side', 'right side',
                            'down front', 'down back']
         # instantiate sensors
-        self.sensors = [drone.getDistanceSensor("{} dist sonar".format(sid))
+        self.sensors = [drone.getDevice("{} dist sonar".format(sid))
                         for sid in self.sensors_id]
         self.sensors_id.append('top dist')
-        self.sensors.append(drone.getDistanceSensor("top dist infrared"))
+        self.sensors.append(drone.getDevice("top dist infrared"))
         # activate sensors
         for sensor in self.sensors:
             sensor.enable(timestep)
@@ -86,38 +86,38 @@ class Drone:
         self.deltaT = timestep / 1000.
         # Drone's Odometry
         # Position coordinates [Y, Z ,X]
-        self.gps = drone.getGPS("gps")
+        self.gps = drone.getDevice("gps")
         self.gps.enable(timestep)
         # Angles respect global coordinates [roll, pitch, yaw]
-        self.imu = drone.getInertialUnit("inertial unit")
+        self.imu = drone.getDevice("inertial unit")
         self.imu.enable(timestep)
         # Accelertion angles [roll, pitch, yaw]
-        self.gyro = drone.getGyro("gyro")
+        self.gyro = drone.getDevice("gyro")
         self.gyro.enable(timestep)
         # Direction degree with north as reference
-        self.compass = drone.getCompass("compass")
+        self.compass = drone.getDevice("compass")
         self.compass.enable(timestep)
 
         # Video acquisition
         fps = 25
-        self.camera = drone.getCamera("camera")
+        self.camera = drone.getDevice("camera")
         self.camera_rate = 1000 // fps
         self.camera.enable(self.camera_rate)
 
         self.leds = [
-            drone.getLED("front left led"),
-            drone.getLED("front right led")
+            drone.getDevice("front left led"),
+            drone.getDevice("front right led")
         ]
         # gimbal
-        self.camera_roll = drone.getMotor("camera roll")
-        self.camera_pitch = drone.getMotor("camera pitch")
+        self.camera_roll = drone.getDevice("camera roll")
+        self.camera_pitch = drone.getDevice("camera pitch")
 
         # Motors
         sides = [
             ['front', 'rear'],
             ['left', 'right']
         ]
-        self.motors = [drone.getMotor("{} {} propeller".format(part, side))
+        self.motors = [drone.getDevice("{} {} propeller".format(part, side))
                        for part in sides[0] for side in sides[1]]
 
         return True
