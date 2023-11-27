@@ -1,3 +1,6 @@
+# Updated
+This repository is now maintaned under https://github.com/angel-ayala/gym-webots-drone
+
 # Webots Fire Scene
 A simulated Webots scene with a first approach of fire simulation through the FireSmoke node.
 In this scene the DJI Mavic 2 Pro drone is available to control, variating the roll, pitch and yaw angles, and the target altitude.
